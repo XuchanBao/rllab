@@ -107,11 +107,13 @@ class BatchPolopt(RLAlgorithm):
         sess.run(tf.global_variables_initializer())
         self.start_worker()
         start_time = time.time()
+        total_samples = 0
         for itr in range(self.start_itr, self.n_itr):
             itr_start_time = time.time()
             with logger.prefix('itr #%d | ' % itr):
                 logger.log("Obtaining samples...")
-                paths = self.obtain_samples(itr)
+                paths, n_samples = self.obtain_samples(itr)
+                total_samples += n_samples
                 logger.log("Processing samples...")
                 samples_data = self.process_samples(itr, paths)
                 logger.log("Logging diagnostics...")

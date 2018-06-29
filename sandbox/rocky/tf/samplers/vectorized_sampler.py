@@ -105,4 +105,4 @@ class VectorizedSampler(BaseSampler):
         logger.record_tabular("EnvExecTime", env_time)
         logger.record_tabular("ProcessExecTime", process_time)
 
-        return paths
+        return paths, n_samples
