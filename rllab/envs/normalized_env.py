@@ -49,6 +49,10 @@ class NormalizedEnv(ProxyEnv, Serializable):
         return reward / (np.sqrt(self._reward_var) + 1e-8)
 
     def reset(self):
+        # A hack for resetting env while recording videos
+        if hasattr(self._wrapped_env, "stats_recorder"):
+            setattr(self._wrapped_env.stats_recorder, "done", None)
+
         ret = self._wrapped_env.reset()
         if self._normalize_obs:
             return self._apply_normalize_obs(ret)

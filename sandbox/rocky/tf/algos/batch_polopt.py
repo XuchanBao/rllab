@@ -95,6 +95,13 @@ class BatchPolopt(RLAlgorithm):
     def obtain_samples(self, itr):
         return self.sampler.obtain_samples(itr)
 
+    def obtain_samples_for_visualization(self):
+        if hasattr(self.sampler, "obtain_samples_for_visualization"):
+            return self.sampler.obtain_samples_for_visualization()
+        raise NotImplementedError(
+            "Sampler {} does not have method obtain_samples_for_visualization!".format(
+                self.sampler))
+
     def process_samples(self, itr, paths):
         return self.sampler.process_samples(itr, paths)
 

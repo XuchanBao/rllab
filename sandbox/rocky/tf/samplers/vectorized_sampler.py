@@ -36,6 +36,27 @@ class VectorizedSampler(BaseSampler):
     def shutdown_worker(self):
         self.vec_env.terminate()
 
+    def obtain_samples_for_visualization(self):
+        tf_env = self.algo.env
+        if hasattr(tf_env.wrapped_env, "stats_recorder"):
+            setattr(tf_env.wrapped_env.stats_recorder, "done", None)
+
+        import builtins
+        builtins.visualize = True
+
+        print("\nAbout to start video...")
+
+        obs = tf_env.reset()
+        horizon = 1000
+        for horizon_num in range(1, horizon + 1):
+            action, _ = self.algo.policy.get_action(obs)
+            next_obs, reward, done, _info = tf_env.step(action)
+            obs = next_obs
+
+            if done or horizon_num == horizon:
+                break
+        builtins.visualize = False
+
     def obtain_samples(self, itr):
         logger.log("Obtaining samples for iteration %d..." % itr)
         paths = []
