@@ -17,26 +17,29 @@ class VectorizedSampler(BaseSampler):
         super(VectorizedSampler, self).__init__(algo)
         self.n_envs = n_envs
 
-    def start_worker(self):
+    def start_worker(self, include_joint_coords=False):
         n_envs = self.n_envs
         if n_envs is None:
             n_envs = int(self.algo.batch_size / self.algo.max_path_length)
             n_envs = max(1, min(n_envs, 100))
 
         if getattr(self.algo.env, 'vectorized', False):
-            self.vec_env = self.algo.env.vec_env_executor(n_envs=n_envs, max_path_length=self.algo.max_path_length)
+            self.vec_env = self.algo.env.vec_env_executor(
+                n_envs=n_envs, max_path_length=self.algo.max_path_length,
+                include_joint_coords=include_joint_coords)
         else:
             envs = [pickle.loads(pickle.dumps(self.algo.env)) for _ in range(n_envs)]
             self.vec_env = VecEnvExecutor(
                 envs=envs,
-                max_path_length=self.algo.max_path_length
+                max_path_length=self.algo.max_path_length,
+                include_joint_coords=include_joint_coords
             )
         self.env_spec = self.algo.env.spec
 
     def shutdown_worker(self):
         self.vec_env.terminate()
 
-    def obtain_samples_for_visualization(self):
+    def obtain_samples_for_visualization(self, include_joint_coords=False):
         tf_env = self.algo.env
         if hasattr(tf_env.wrapped_env, "stats_recorder"):
             setattr(tf_env.wrapped_env.stats_recorder, "done", None)
@@ -45,23 +48,26 @@ class VectorizedSampler(BaseSampler):
         builtins.visualize = True
 
         print("\nAbout to start video...")
-
-        obs = tf_env.reset()
+        obs_dim = self.env_spec.observation_space.shape[0]
+        obs = tf_env.reset(include_joint_coords=include_joint_coords)
         horizon = 1000
         for horizon_num in range(1, horizon + 1):
-            action, _ = self.algo.policy.get_action(obs)
-            next_obs, reward, done, _info = tf_env.step(action)
+            action, _ = self.algo.policy.get_action(obs[:obs_dim])
+            next_obs, reward, done, _info = tf_env.step(action, use_states=obs)
             obs = next_obs
 
             if done or horizon_num == horizon:
                 break
         builtins.visualize = False
 
-    def obtain_samples(self, itr):
+    def obtain_samples(self, itr, include_joint_coords=False):
         logger.log("Obtaining samples for iteration %d..." % itr)
         paths = []
         n_samples = 0
-        obses = self.vec_env.reset()
+
+        obses = self.vec_env.reset(include_joint_coords=include_joint_coords)
+        obs_dim = self.env_spec.observation_space.shape[0]
+
         dones = np.asarray([True] * self.vec_env.num_envs)
         running_paths = [None] * self.vec_env.num_envs
 
@@ -75,11 +81,10 @@ class VectorizedSampler(BaseSampler):
         while n_samples < self.algo.batch_size:
             t = time.time()
             policy.reset(dones)
-            actions, agent_infos = policy.get_actions(obses)
-
+            actions, agent_infos = policy.get_actions(obses[:, :obs_dim])
             policy_time += time.time() - t
             t = time.time()
-            next_obses, rewards, dones, env_infos = self.vec_env.step(actions)
+            next_obses, rewards, dones, env_infos = self.vec_env.step(actions, use_states=obses)
             env_time += time.time() - t
 
             t = time.time()
@@ -101,7 +106,7 @@ class VectorizedSampler(BaseSampler):
                         env_infos=[],
                         agent_infos=[],
                     )
-                running_paths[idx]["observations"].append(observation)
+                running_paths[idx]["observations"].append(observation[:obs_dim])
                 running_paths[idx]["actions"].append(action)
                 running_paths[idx]["rewards"].append(reward)
                 running_paths[idx]["env_infos"].append(env_info)

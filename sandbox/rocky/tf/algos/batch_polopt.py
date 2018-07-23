@@ -86,18 +86,18 @@ class BatchPolopt(RLAlgorithm):
         self.sampler = sampler_cls(self, **sampler_args)
         self.init_opt()
 
-    def start_worker(self):
-        self.sampler.start_worker()
+    def start_worker(self, include_joint_coords=False):
+        self.sampler.start_worker(include_joint_coords=include_joint_coords)
 
     def shutdown_worker(self):
         self.sampler.shutdown_worker()
 
-    def obtain_samples(self, itr):
-        return self.sampler.obtain_samples(itr)
+    def obtain_samples(self, itr, include_joint_coords=False):
+        return self.sampler.obtain_samples(itr, include_joint_coords=include_joint_coords)
 
-    def obtain_samples_for_visualization(self):
+    def obtain_samples_for_visualization(self, include_joint_coords=False):
         if hasattr(self.sampler, "obtain_samples_for_visualization"):
-            return self.sampler.obtain_samples_for_visualization()
+            return self.sampler.obtain_samples_for_visualization(include_joint_coords=include_joint_coords)
         raise NotImplementedError(
             "Sampler {} does not have method obtain_samples_for_visualization!".format(
                 self.sampler))

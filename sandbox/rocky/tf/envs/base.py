@@ -50,8 +50,9 @@ class TfEnv(ProxyEnv):
     def vectorized(self):
         return getattr(self.wrapped_env, "vectorized", False)
 
-    def vec_env_executor(self, n_envs, max_path_length):
-        return VecTfEnv(self.wrapped_env.vec_env_executor(n_envs=n_envs, max_path_length=max_path_length))
+    def vec_env_executor(self, n_envs, max_path_length, include_joint_coords=False):
+        return VecTfEnv(self.wrapped_env.vec_env_executor(n_envs=n_envs, max_path_length=max_path_length,
+                                                          include_joint_coords=include_joint_coords))
 
     @classmethod
     def wrap(cls, env_cls, **extra_kwargs):
@@ -64,15 +65,15 @@ class VecTfEnv(object):
     def __init__(self, vec_env):
         self.vec_env = vec_env
 
-    def reset(self):
-        return self.vec_env.reset()
+    def reset(self, include_joint_coords=False):
+        return self.vec_env.reset(include_joint_coords=include_joint_coords)
 
     @property
     def num_envs(self):
         return self.vec_env.num_envs
 
-    def step(self, action_n):
-        return self.vec_env.step(action_n)
+    def step(self, action_n, use_states=None):
+        return self.vec_env.step(action_n, use_states=use_states)
 
     def terminate(self):
         self.vec_env.terminate()

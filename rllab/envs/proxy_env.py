@@ -22,8 +22,8 @@ class ProxyEnv(Env, Serializable):
     def observation_space(self):
         return self._wrapped_env.observation_space
 
-    def step(self, action):
-        return self._wrapped_env.step(action)
+    def step(self, action, **kwargs):
+        return self._wrapped_env.step(action, **kwargs)
 
     def render(self, *args, **kwargs):
         return self._wrapped_env.render(*args, **kwargs)
