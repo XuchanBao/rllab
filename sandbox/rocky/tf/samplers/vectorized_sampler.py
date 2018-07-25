@@ -49,13 +49,14 @@ class VectorizedSampler(BaseSampler):
 
         print("\nAbout to start video...")
         obs_dim = self.env_spec.observation_space.shape[0]
-        obs = tf_env.reset(include_joint_coords=include_joint_coords)
+        obs = tf_env.reset()
+        obs = self._add_joint_coords_to_obs(obs, include_joint_coords)
         horizon = 1000
         for horizon_num in range(1, horizon + 1):
-            action, _ = self.algo.policy.get_action(obs[:obs_dim])
+            # action, _ = self.algo.policy.get_action(obs[:obs_dim])
+            action, _ = self.algo.policy.get_action(obs)
             next_obs, reward, done, _info = tf_env.step(action, use_states=obs)
-            obs = next_obs
-
+            obs = self._add_joint_coords_to_obs(next_obs, include_joint_coords)
             if done or horizon_num == horizon:
                 break
         builtins.visualize = False
@@ -65,7 +66,8 @@ class VectorizedSampler(BaseSampler):
         paths = []
         n_samples = 0
 
-        obses = self.vec_env.reset(include_joint_coords=include_joint_coords)
+        obses = self.vec_env.reset()
+        obses = self._add_joint_coords_to_obses(obses, include_joint_coords)
         obs_dim = self.env_spec.observation_space.shape[0]
 
         dones = np.asarray([True] * self.vec_env.num_envs)
@@ -81,7 +83,7 @@ class VectorizedSampler(BaseSampler):
         while n_samples < self.algo.batch_size:
             t = time.time()
             policy.reset(dones)
-            actions, agent_infos = policy.get_actions(obses[:, :obs_dim])
+            actions, agent_infos = policy.get_actions(obses)
             policy_time += time.time() - t
             t = time.time()
             next_obses, rewards, dones, env_infos = self.vec_env.step(actions, use_states=obses)
@@ -106,7 +108,7 @@ class VectorizedSampler(BaseSampler):
                         env_infos=[],
                         agent_infos=[],
                     )
-                running_paths[idx]["observations"].append(observation[:obs_dim])
+                running_paths[idx]["observations"].append(observation)
                 running_paths[idx]["actions"].append(action)
                 running_paths[idx]["rewards"].append(reward)
                 running_paths[idx]["env_infos"].append(env_info)
@@ -123,7 +125,7 @@ class VectorizedSampler(BaseSampler):
                     running_paths[idx] = None
             process_time += time.time() - t
             pbar.inc(len(obses))
-            obses = next_obses
+            obses = self._add_joint_coords_to_obses(next_obses, include_joint_coords)
 
         pbar.stop()
 
@@ -132,3 +134,34 @@ class VectorizedSampler(BaseSampler):
         logger.record_tabular("ProcessExecTime", process_time)
 
         return paths, n_samples
+
+    def _add_joint_coords_to_obses(self, obses, include_joint_coords):
+        if include_joint_coords:
+            inner_env = self._get_inner_env()
+            if hasattr(inner_env, "env"):
+                inner_env = inner_env.env
+            extended_obses = []
+            for obs in obses:
+                extended_obses.append(self._add_joint_coords_to_obs(
+                    obs, include_joint_coords, inner_env))
+            return np.array(extended_obses)
+
+        return obses
+
+    def _add_joint_coords_to_obs(self, obs, include_joint_coords, inner_env=None):
+        if include_joint_coords:
+            if not inner_env:
+                inner_env = self._get_inner_env()
+                if hasattr(inner_env, "env"):
+                    inner_env = inner_env.env
+            return np.append(obs, inner_env.get_geom_xpos().flatten())
+        return obs
+
+    def _get_inner_env(self):
+        env = self.vec_env.vec_env
+        while hasattr(env, "env"):
+            env = env.env
+        if hasattr(env.wrapped_env, '_wrapped_env'):
+            return env.wrapped_env._wrapped_env
+        else:
+            return env.wrapped_env.env.unwrapped

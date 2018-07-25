@@ -31,7 +31,8 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             output_nonlinearity=None,
             mean_network=None,
             std_network=None,
-            std_parametrization='exp'
+            std_parametrization='exp',
+            n_additional_inputs=0
     ):
         """
         :param env_spec:
@@ -56,8 +57,9 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
         assert isinstance(env_spec.action_space, Box)
 
         with tf.variable_scope(name):
-
-            obs_dim = env_spec.observation_space.flat_dim
+            self.base_obs_dim = env_spec.observation_space.flat_dim
+            self.additional_obs_dim = n_additional_inputs
+            obs_dim = self.base_obs_dim + self.additional_obs_dim
             action_dim = env_spec.action_space.flat_dim
 
             # create network

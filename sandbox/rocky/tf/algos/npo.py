@@ -35,6 +35,7 @@ class NPO(BatchPolopt):
         obs_var = self.env.observation_space.new_tensor_variable(
             'obs',
             extra_dims=1 + is_recurrent,
+            n_additional_inputs=self.policy.additional_obs_dim
         )
         action_var = self.env.action_space.new_tensor_variable(
             'action',
