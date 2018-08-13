@@ -105,7 +105,7 @@ class BatchPolopt(RLAlgorithm):
     def process_samples(self, itr, paths):
         return self.sampler.process_samples(itr, paths)
 
-    def train(self, sess=None):
+    def train(self, sess=None, include_joint_coords=False):
         created_session = True if (sess is None) else False
         if sess is None:
             sess = tf.Session()
@@ -119,7 +119,8 @@ class BatchPolopt(RLAlgorithm):
             itr_start_time = time.time()
             with logger.prefix('itr #%d | ' % itr):
                 logger.log("Obtaining samples...")
-                paths, n_samples = self.obtain_samples(itr)
+                paths, n_samples = self.obtain_samples(
+                    itr, include_joint_coords=include_joint_coords)
                 total_samples += n_samples
                 logger.log("Processing samples...")
                 samples_data = self.process_samples(itr, paths)

@@ -137,14 +137,22 @@ class VectorizedSampler(BaseSampler):
 
     def _add_joint_coords_to_obses(self, obses, include_joint_coords):
         if include_joint_coords:
-            inner_env = self._get_inner_env()
-            if hasattr(inner_env, "env"):
-                inner_env = inner_env.env
-            extended_obses = []
-            for obs in obses:
-                extended_obses.append(self._add_joint_coords_to_obs(
-                    obs, include_joint_coords, inner_env))
-            return np.array(extended_obses)
+            try:
+                inner_env = self._get_inner_env()
+                if hasattr(inner_env, "env"):
+                    inner_env = inner_env.env
+                extended_obses = []
+                for obs in obses:
+                    extended_obses.append(self._add_joint_coords_to_obs(
+                        obs, include_joint_coords, inner_env))
+                return np.array(extended_obses)
+            except AttributeError:
+                inner_envs = self._get_inner_envs()
+                extended_obses = []
+                for obs_i in range(len(obses)):
+                    extended_obses.append(self._add_joint_coords_to_obs(
+                        obses[obs_i], include_joint_coords, inner_envs[obs_i]))
+                return np.array(extended_obses)
 
         return obses
 
@@ -165,3 +173,14 @@ class VectorizedSampler(BaseSampler):
             return env.wrapped_env._wrapped_env
         else:
             return env.wrapped_env.env.unwrapped
+
+    def _get_inner_envs(self):
+        inner_envs = []
+        for env in self.vec_env.envs:
+            while hasattr(env, "env"):
+                env = env.env
+            if hasattr(env.wrapped_env, '_wrapped_env'):
+                inner_envs.append(env.wrapped_env._wrapped_env)
+            else:
+                inner_envs.append(env.wrapped_env.env.unwrapped)
+        return inner_envs
