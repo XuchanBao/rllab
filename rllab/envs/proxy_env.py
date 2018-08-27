@@ -36,10 +36,10 @@ class ProxyEnv(Env, Serializable):
         return self._wrapped_env.horizon
 
     def terminate(self):
-        if hasattr(self._wrapped_env, "env"):
-            self._wrapped_env.env.terminate()
+        if hasattr(self._wrapped_env, "terminate"):
+            self._wrapped_env.terminate()
         else:
-                self._wrapped_env.terminate()
+            self._wrapped_env.env.terminate()
 
     def get_param_values(self):
         return self._wrapped_env.get_param_values()

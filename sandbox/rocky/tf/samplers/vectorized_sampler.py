@@ -139,8 +139,6 @@ class VectorizedSampler(BaseSampler):
         if include_joint_coords:
             try:
                 inner_env = self._get_inner_env()
-                if hasattr(inner_env, "env"):
-                    inner_env = inner_env.env
                 extended_obses = []
                 for obs in obses:
                     extended_obses.append(self._add_joint_coords_to_obs(
@@ -160,9 +158,10 @@ class VectorizedSampler(BaseSampler):
         if include_joint_coords:
             if not inner_env:
                 inner_env = self._get_inner_env()
-                if hasattr(inner_env, "env"):
-                    inner_env = inner_env.env
-            return np.append(obs, inner_env.get_geom_xpos().flatten())
+            if hasattr(inner_env, "get_geom_xpos"):
+                return np.append(obs, inner_env.get_geom_xpos().flatten())
+            else:
+                return np.append(obs, inner_env.env.get_geom_xpos().flatten())
         return obs
 
     def _get_inner_env(self):
