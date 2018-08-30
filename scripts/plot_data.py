@@ -40,6 +40,27 @@ def add_curve_for_experiment(data_dir, label=None):
     add_curve(plot_data, label)
 
 
+def add_curve_for_experiment_with_dir_substr(cur_dir, dir_substr, label=None):
+    print("=> Obtaining data in directory {} containing sub string {}".format(cur_dir, dir_substr))
+    plot_data = []
+    shortest_length = None
+    for sub_name in os.listdir(cur_dir):
+        sub_dir = os.path.join(cur_dir, sub_name)
+        if dir_substr in sub_dir:
+            plot_data_single_exp = get_plot_data_from_single_experiment(
+                sub_dir, options.file_name, options.column_to_plot)
+            plot_data.append(plot_data_single_exp)
+
+            if shortest_length is None:
+                shortest_length = len(plot_data_single_exp)
+            elif len(plot_data_single_exp) < shortest_length:
+                shortest_length = len(plot_data_single_exp)
+    for i in range(len(plot_data)):
+        plot_data[i] = plot_data[i][:shortest_length]
+
+    add_curve(plot_data, label)
+
+
 def create_plot():
     plt.figure()
     plt.title(options.title)
@@ -67,10 +88,27 @@ def add_legend():
     plt.legend()
 
 
+def use_option_or_input_label(option_argument, data_dir):
+    if option_argument is None:
+        return input("Enter label for data in directory '{}': ".format(data_dir))
+    return option_argument
+
+
+def plot_in_dir_with_substr(sub_str):
+    if sub_str is not None:
+        label = input("Enter label for data in directory with sub string {}: ".format(sub_str))
+        add_curve_for_experiment_with_dir_substr(options.data_dir, sub_str, label=label)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot training curve with progress data")
     parser.add_argument("--data_dir", type=str)
     parser.add_argument("--multi_curve", type=bool, default=False)
+    parser.add_argument("--use_dir_substr", type=bool, default=False)
+    parser.add_argument("--dir1_substr", type=str, default=None)
+    parser.add_argument("--dir2_substr", type=str, default=None)
+    parser.add_argument("--dir3_substr", type=str, default=None)
+    parser.add_argument("--dir4_substr", type=str, default=None)
     parser.add_argument("--file_name", type=str, default="progress.csv")
     parser.add_argument("--column_to_plot", type=str, default="AverageReturn")
     parser.add_argument("--title", type=str, default="Training Average Reward Curve")
@@ -78,25 +116,44 @@ if __name__ == "__main__":
     parser.add_argument("--save_fig_dir", type=str, default=os.path.curdir)
     parser.add_argument("--x_max", type=int, default=MAX_LENGTH)
     parser.add_argument("--extra_dir1", type=str, default=None)
+    parser.add_argument("--extra_dir1_curve_name", type=str, default=None)
     parser.add_argument("--extra_dir2", type=str, default=None)
+    parser.add_argument("--extra_dir2_curve_name", type=str, default=None)
+    parser.add_argument("--extra_dir3", type=str, default=None)
+    parser.add_argument("--extra_dir3_curve_name", type=str, default=None)
+    parser.add_argument("--extra_dir4", type=str, default=None)
+    parser.add_argument("--extra_dir4_curve_name", type=str, default=None)
+    parser.add_argument("--default_curve_name", type=str, default='default-curve')
 
     options = parser.parse_args()
 
     create_plot()
     if options.multi_curve:
-        for sub_name in os.listdir(options.data_dir):
-            sub_dir = os.path.join(options.data_dir, sub_name)
-            if os.path.isdir(sub_dir) and "viz" not in sub_dir:
-                label = input("Enter label for data in directory '{}': ".format(sub_dir))
-                add_curve_for_experiment(sub_dir, label=label)
+        if options.use_dir_substr:
+            plot_in_dir_with_substr(options.dir1_substr)
+            plot_in_dir_with_substr(options.dir2_substr)
+            plot_in_dir_with_substr(options.dir3_substr)
+            plot_in_dir_with_substr(options.dir4_substr)
+        else:
+            for sub_name in os.listdir(options.data_dir):
+                sub_dir = os.path.join(options.data_dir, sub_name)
+                if os.path.isdir(sub_dir) and "viz" not in sub_dir:
+                    label = input("Enter label for data in directory '{}': ".format(sub_dir))
+                    add_curve_for_experiment(sub_dir, label=label)
         add_legend()
     else:
         if options.extra_dir1:
-            label = input("Enter label for data in directory '{}': ".format(options.extra_dir1))
+            label = use_option_or_input_label(options.extra_dir1_curve_name, options.extra_dir1)
             add_curve_for_experiment(options.extra_dir1, label=label)
         if options.extra_dir2:
-            label = input("Enter label for data in directory '{}': ".format(options.extra_dir2))
+            label = use_option_or_input_label(options.extra_dir2_curve_name, options.extra_dir2)
             add_curve_for_experiment(options.extra_dir2, label=label)
-        add_curve_for_experiment(options.data_dir, label="default-curve")
+        if options.extra_dir3:
+            label = use_option_or_input_label(options.extra_dir3_curve_name, options.extra_dir3)
+            add_curve_for_experiment(options.extra_dir3, label=label)
+        if options.extra_dir4:
+            label = use_option_or_input_label(options.extra_dir4_curve_name, options.extra_dir4)
+            add_curve_for_experiment(options.extra_dir4, label=label)
+        add_curve_for_experiment(options.data_dir, label=options.default_curve_name)
         add_legend()
     save_plot()
