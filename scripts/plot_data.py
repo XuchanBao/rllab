@@ -20,7 +20,6 @@ def add_curve_for_experiment(data_dir, label=None):
         ]
     else:
         plot_data = []
-        shortest_length = None
         for sub_name in os.listdir(data_dir):
             sub_dir = os.path.join(data_dir, sub_name)
             if os.path.isdir(sub_dir) and "seed" in sub_name and "viz" not in sub_name and \
@@ -30,33 +29,18 @@ def add_curve_for_experiment(data_dir, label=None):
                     sub_dir, options.file_name, options.column_to_plot)
                 plot_data.append(plot_data_single_exp)
 
-                if shortest_length is None:
-                    shortest_length = len(plot_data_single_exp)
-                elif len(plot_data_single_exp) < shortest_length:
-                    shortest_length = len(plot_data_single_exp)
-        for i in range(len(plot_data)):
-            plot_data[i] = plot_data[i][:shortest_length]
-
     add_curve(plot_data, label)
 
 
 def add_curve_for_experiment_with_dir_substr(cur_dir, dir_substr, label=None):
     print("=> Obtaining data in directory {} containing sub string {}".format(cur_dir, dir_substr))
     plot_data = []
-    shortest_length = None
     for sub_name in os.listdir(cur_dir):
         sub_dir = os.path.join(cur_dir, sub_name)
         if dir_substr in sub_dir:
             plot_data_single_exp = get_plot_data_from_single_experiment(
                 sub_dir, options.file_name, options.column_to_plot)
             plot_data.append(plot_data_single_exp)
-
-            if shortest_length is None:
-                shortest_length = len(plot_data_single_exp)
-            elif len(plot_data_single_exp) < shortest_length:
-                shortest_length = len(plot_data_single_exp)
-    for i in range(len(plot_data)):
-        plot_data[i] = plot_data[i][:shortest_length]
 
     add_curve(plot_data, label)
 
@@ -74,8 +58,23 @@ def save_plot():
 
 
 def add_curve(data, label):
-    mean_data = np.mean(data, axis=0)
-    std_data = np.std(data, axis=0)
+    longest_length = len(data[0])
+    for i in range(1, len(data)):
+        if len(data[i]) > longest_length:
+            longest_length = len(data[i])
+
+    mean_data = []
+    std_data = []
+    for itr in range(longest_length):
+        itr_values = []
+        for curve_i in range(len(data)):
+            if itr < len(data[curve_i]):
+                itr_values.append(data[curve_i][itr])
+        mean_data.append(np.mean(itr_values))
+        std_data.append(np.std(itr_values))
+
+    mean_data = np.array(mean_data)
+    std_data = np.array(std_data)
     x = range(1, len(mean_data) + 1)
     if label is None:
         plt.plot(x, mean_data)
@@ -109,6 +108,8 @@ if __name__ == "__main__":
     parser.add_argument("--dir2_substr", type=str, default=None)
     parser.add_argument("--dir3_substr", type=str, default=None)
     parser.add_argument("--dir4_substr", type=str, default=None)
+    parser.add_argument("--dir5_substr", type=str, default=None)
+    parser.add_argument("--dir6_substr", type=str, default=None)
     parser.add_argument("--file_name", type=str, default="progress.csv")
     parser.add_argument("--column_to_plot", type=str, default="AverageReturn")
     parser.add_argument("--title", type=str, default="Training Average Reward Curve")
@@ -134,6 +135,8 @@ if __name__ == "__main__":
             plot_in_dir_with_substr(options.dir2_substr)
             plot_in_dir_with_substr(options.dir3_substr)
             plot_in_dir_with_substr(options.dir4_substr)
+            plot_in_dir_with_substr(options.dir5_substr)
+            plot_in_dir_with_substr(options.dir6_substr)
         else:
             for sub_name in os.listdir(options.data_dir):
                 sub_dir = os.path.join(options.data_dir, sub_name)
